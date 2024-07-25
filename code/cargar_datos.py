@@ -1,21 +1,41 @@
 import pandas as pd
+import socket
+import json
 
 # ubicacion de archivos
-VIAJES = './csv/ROkzNjh5SCO63dSgeX8tcw.csv'
-PARADAS = './csv/v_uptu_paradas.csv'
-ORIGEN_DESTINO_LINEAS = './csv/v_uptu_lsv.csv'
-ORDEN_PARADAS = './csv/uptu_pasada_variante.csv'
+VIAJES = './csv/cant_viajes_franja.csv'
+COD_VARIAN = './csv/cod_varian.csv'
+PARADA_LINEAS_DIREC = './csv/paradas_lineas_direc.csv'
+
 
 def get_datasets():
-    # Leer el archivo CSV y cargar los primeros un millón de registros
+    # Leer los archivos CSV
     df_viajes = pd.read_csv(VIAJES)
-    df_paradas = pd.read_csv(PARADAS, delimiter=';')
-    df_origen_destino_linea = pd.read_csv(ORIGEN_DESTINO_LINEAS, delimiter=';')
-    df_orden_paradas = pd.read_csv(ORDEN_PARADAS, delimiter=';')
+    df_origen_destino_linea = pd.read_csv(PARADA_LINEAS_DIREC)
+    df_orden_paradas = pd.read_csv(COD_VARIAN)
 
-    df_origen_destino_linea = df_origen_destino_linea.drop_duplicates(subset=['DESC_LINEA', 'DESC_VARIA'])
+    # Eliminar duplicados
+    df_orden_paradas = df_orden_paradas.drop_duplicates(subset=['DESC_LINEA', 'COD_VARIAN'])
 
-    return { 
-        'viajes': df_viajes, 'paradas': df_paradas, 
-        'orden_paradas': df_orden_paradas, 'origen_destino_linea': df_origen_destino_linea
-        }
+    # Convertir DataFrames a diccionarios
+    data = { 
+        'paradas_lineas_direc': df_origen_destino_linea.to_dict(orient='records'),  
+        'cod_varian': df_orden_paradas.to_dict(orient='records'), 
+        'df_cant_viajes_franja': df_viajes.to_dict(orient='records')
+    }
+    
+    return data
+
+def send_data(data, port):
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect(('localhost', port))
+
+    json_data = json.dumps(data)
+    client_socket.sendall(json_data.encode())
+
+    client_socket.close()
+
+if __name__ == "__main__":
+    port = 65432
+    data = get_datasets()
+    send_data(data, port)

@@ -1,8 +1,6 @@
 import pandas as pd
 import cargar_datos as carga
 import os
-import json
-import socket
 
 def clean_date():
     # Cargar datos
@@ -18,7 +16,6 @@ def clean_date():
     df_origen_destino_linea_no_null = df_origen_destino_linea.dropna(subset=['COD_LINEA', 'DESC_LINEA', 'COD_VARIAN', 'DESC_VARIA'])
     df_orden_paradas_no_null = df_orden_paradas.dropna(subset=['tipo_dia', 'cod_variante', 'frecuencia', 'cod_ubic_parada', 'hora', 'dia_anterior'])
 
-    #Creamos dataframe df_cant_viajes_franja para obtener la suma de viajes para cada cod_variante en determinada hora.
     # Convertir la columna 'fecha_evento' a datetime
     df_viajes['fecha_evento'] = pd.to_datetime(df_viajes['fecha_evento'])
 
@@ -83,22 +80,12 @@ def clean_date():
     #Eliminar duplicados
     df_cod_varian =  df_cod_varian[['COD_VARIAN', 'DESC_LINEA']].drop_duplicates()
 
-    return {
-        'paradas_lineas_direc': df_paradas_lineas_direc.to_dict(orient='records'),
-        'cod_varian': df_cod_varian.to_dict(orient='records'),
-        'df_cant_viajes_franja': df_cant_viajes_franja.to_dict(orient='records')
-    }
+    # Guardar los dataframes en archivos CSV
+    df_paradas_lineas_direc.to_csv('./csv/paradas_lineas_direc.csv', index=False)
+    df_cod_varian.to_csv('./csv/cod_varian.csv', index=False)
+    df_cant_viajes_franja.to_csv('./csv/cant_viajes_franja.csv', index=False)
 
-def send_data(data, port):
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect(('localhost', port))
-
-    json_data = json.dumps(data)
-    client_socket.sendall(json_data.encode())
-
-    client_socket.close()
+    print("Dataframes guardados en archivos CSV.")
 
 if __name__ == "__main__":
-    port = 65432
-    data = clean_date()
-    send_data(data, port)
+    clean_date()

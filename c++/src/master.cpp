@@ -7,7 +7,6 @@
 #include <arpa/inet.h>
 #include <thread>
 #include <array>
-#include <omp.h>
 #include <unistd.h>
 #include <fstream>
 #include <vector>
@@ -93,27 +92,23 @@ int main(int argc, char* argv[]) {
         std::thread client_thread(receive_data, std::ref(preprocessing_data), 65432);
         std::this_thread::sleep_for(std::chrono::seconds(1));
 
-        int result = system("python3 code/preprocessing_data.py");
+        int result = system("python3 code/cargar_datos.py");
         if (result != 0) {
-            std::cerr << "Error al ejecutar el script de Python (preprocessing_data.py)." << std::endl;
+            std::cerr << "Error al ejecutar el script de Python (cargar_datos.py)." << std::endl;
             MPI_Finalize();
             return 1;
         }
         
-        std::cout << "Script de Python (preprocessing_data.py) ejecutado con éxito." << std::endl;
+        std::cout << "Script de Python (cargar_datos.py) ejecutado con éxito." << std::endl;
 
         int num_fragments = std::stoi(argv[1]);
         client_thread.join();
         auto data_result = nlohmann::json::parse(preprocessing_data);
         std::vector<nlohmann::json> cod_varian_fragments = split_dataframe(data_result["cod_varian"], num_fragments);
+
         // Medir el tiempo de inicio
         double start_time = MPI_Wtime();
 
-        // Aquí se configura el número de threads para OpenMP
-        int num_threads = num_fragments;  // o algún otro valor que desees
-        omp_set_num_threads(num_threads);
-
-        #pragma omp parallel for
         for (int i = 1; i <= num_fragments; ++i) {
             nlohmann::json fragment;
             fragment["paradas_lineas_direc"] = data_result["paradas_lineas_direc"];
@@ -127,7 +122,6 @@ int main(int argc, char* argv[]) {
             MPI_Send(&fragment_size, 1, MPI_INT, i, 1, MPI_COMM_WORLD);
             MPI_Send(fragment_str.c_str(), fragment_size, MPI_CHAR, i, 2, MPI_COMM_WORLD);
         }
-
 
         MPI_Barrier(MPI_COMM_WORLD);
 
@@ -150,10 +144,10 @@ int main(int argc, char* argv[]) {
         std::cout << "Tiempo total de ejecución: " << elapsed_time << " segundos." << std::endl;
 
         // Crear un objeto JSON para unir todos los resultados
-        nlohmann::json final_result =  nlohmann::json::array();
+        nlohmann::json final_result = nlohmann::json::array();
 
         for (int i = 0; i < num_fragments; ++i) {
-            final_result.push_back( nlohmann::json::parse(result_data[i]));
+            final_result.push_back(nlohmann::json::parse(result_data[i]));
         }
 
         // Guardar el objeto JSON en un archivo
@@ -162,7 +156,6 @@ int main(int argc, char* argv[]) {
         out_file.close();
 
         std::cout << "Resultados guardados en 'resultados.json'." << std::endl;
-
     }
     
     MPI_Finalize();

@@ -51,7 +51,6 @@ def main(numFragmento):
     
     # Crear un diccionario vacío
     resultados = {}
-    k = 0
     
     for franja in tqdm(['00-10', '10-18', '18-00'], desc="Procesando franjas"):
         for _, row in tqdm(data_cod_varian.iterrows(), total=len(data_cod_varian), desc=f"Procesando cod_varian {franja} {numFragmento}"):
